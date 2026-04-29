@@ -1,10 +1,13 @@
-import { _decorator, Component } from 'cc';
+import { _decorator, Component, EventTouch, input, Input } from 'cc';
 import {
     calculateSellPrice,
     FishCatchResult,
     FishData,
+    FIXED_POINTER_SPEED,
+    getSafeZoneAngleByRarity,
     randomWeight,
     selectRandomFish,
+    tryUpgradeFishByPerfect,
 } from '../data/FishData';
 import { CollectionPanel } from '../ui/CollectionPanel';
 import { FishingDialUI } from '../ui/FishingDialUI';
@@ -46,9 +49,14 @@ export class GameManager extends Component {
     protected start(): void {
         this.loadGame();
         this.bindUIEvents();
+        input.on(Input.EventType.TOUCH_END, this.handleScreenTouchEnded, this);
         this.hideSecondaryPanels();
         this.refreshMainUI();
         this.setState(GameState.Idle, '准备钓鱼');
+    }
+
+    protected onDestroy(): void {
+        input.off(Input.EventType.TOUCH_END, this.handleScreenTouchEnded, this);
     }
 
     public castRod(): void {
@@ -115,13 +123,15 @@ export class GameManager extends Component {
             return;
         }
 
-        this._gold += this._currentResult.sellPrice;
+        const earnedGold = this._currentResult.sellPrice;
+        this._gold += earnedGold;
         this.saveGame();
         this.resultPanel?.hide();
         this._currentFish = null;
         this._currentResult = null;
-        this.refreshMainUI();
         this.setState(GameState.Idle, '准备钓鱼');
+        this.refreshMainUI();
+        this.mainUI?.playGoldGain(earnedGold);
     }
 
     public continueWithoutSelling(): void {
@@ -154,7 +164,7 @@ export class GameManager extends Component {
         }
 
         if (this.fishingDialUI) {
-            this.fishingDialUI.onChallengeSuccess = () => this.handleFishingSuccess();
+            this.fishingDialUI.onChallengeSuccess = (isPerfect: boolean) => this.handleFishingSuccess(isPerfect);
             this.fishingDialUI.onChallengeFailed = () => this.handleFishingFailed();
         }
 
@@ -166,6 +176,24 @@ export class GameManager extends Component {
         if (this.collectionPanel) {
             this.collectionPanel.onCloseRequested = () => this.hideCollection();
         }
+    }
+
+    private handleScreenTouchEnded(event: EventTouch): void {
+        if (this._state !== GameState.Idle) {
+            return;
+        }
+
+        const touchPoint = event.getUILocation();
+
+        if (this.mainUI?.isPointInFunctionArea(touchPoint)) {
+            return;
+        }
+
+        if (this.collectionPanel?.node.activeInHierarchy || this.resultPanel?.node.activeInHierarchy) {
+            return;
+        }
+
+        this.castRod();
     }
 
     private hideSecondaryPanels(): void {
@@ -198,26 +226,34 @@ export class GameManager extends Component {
         this.mainUI?.setStatus('鱼儿咬钩了！');
         this.setState(GameState.FishingChallenge);
         this.fishingDialUI?.startChallenge(
-            this.getFinalSafeZoneAngle(this._currentFish),
-            this._currentFish.pointerSpeed,
+            this._currentFish.rarity,
+            getSafeZoneAngleByRarity(this._currentFish.rarity),
+            FIXED_POINTER_SPEED,
             this._currentFish.requiredSuccessCount,
         );
     }
 
-    private handleFishingSuccess(): void {
+    private handleFishingSuccess(isPerfect: boolean): void {
         if (this._state !== GameState.FishingChallenge || !this._currentFish) {
             return;
         }
 
-        const weight = randomWeight(this._currentFish);
-        const sellPrice = calculateSellPrice(this._currentFish, weight);
-        const collectionResult = this._collectionManager.recordCatch(this._currentFish.id, weight);
+        const perfectResult = isPerfect
+            ? tryUpgradeFishByPerfect(this._currentFish)
+            : { fish: this._currentFish, upgradedFromRarity: null };
+        const finalFish = perfectResult.fish;
+        const weight = randomWeight(finalFish);
+        const sellPrice = calculateSellPrice(finalFish, weight);
+        const collectionResult = this._collectionManager.recordCatch(finalFish.id, weight);
 
+        this._currentFish = finalFish;
         this._currentResult = {
-            fish: this._currentFish,
+            fish: finalFish,
             weight,
             sellPrice,
             isNewRecord: collectionResult.isNewRecord,
+            wasPerfect: isPerfect,
+            upgradedFromRarity: perfectResult.upgradedFromRarity,
         };
 
         this.saveGame();
@@ -238,6 +274,7 @@ export class GameManager extends Component {
 
     private setState(state: GameState, statusText?: string): void {
         this._state = state;
+        this.mainUI?.setHudVisible(state !== GameState.FishingChallenge && state !== GameState.Result);
 
         if (statusText) {
             this.mainUI?.setStatus(statusText);
@@ -264,9 +301,5 @@ export class GameManager extends Component {
 
     private getUpgradeCost(): number {
         return this._rodLevel * 100;
-    }
-
-    private getFinalSafeZoneAngle(fish: FishData): number {
-        return Math.min(120, fish.safeZoneAngle + (this._rodLevel - 1) * 2);
     }
 }

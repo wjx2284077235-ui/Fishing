@@ -1,5 +1,5 @@
 import { _decorator, Button, Component, Label, Node, UITransform } from 'cc';
-import { FISH_POOL, FishCollectionRecord } from '../data/FishData';
+import { FISH_POOL, FishCollectionRecord, getRarityLabel } from '../data/FishData';
 
 const { ccclass, property } = _decorator;
 
@@ -51,9 +51,9 @@ export class CollectionPanel extends Component {
             const isUnlocked = Boolean(record?.unlocked);
 
             if (isUnlocked && record) {
-                label.string = `${fish.name} | ${fish.rarity} | 捕获 ${record.catchCount} | 最大 ${record.maxWeight.toFixed(2)} kg`;
+                label.string = `${fish.name} | ${getRarityLabel(fish.rarity)} | 捕获 ${record.catchCount} | 最大 ${record.maxWeight.toFixed(2)} kg`;
             } else {
-                label.string = `??? | ${fish.rarity} | 捕获 0 | 最大 0.00 kg`;
+                label.string = `??? | ${getRarityLabel(fish.rarity)} | 捕获 0 | 最大 0.00 kg`;
             }
         }
     }

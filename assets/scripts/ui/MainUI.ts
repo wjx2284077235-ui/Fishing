@@ -1,12 +1,12 @@
-import { _decorator, Button, Component, Label, Node, UITransform } from 'cc';
+import { _decorator, Button, Color, Component, Label, Node, tween, Tween, UIOpacity, UITransform, Vec2, Vec3 } from 'cc';
 
 const { ccclass, property } = _decorator;
 
-const TEXT_CAST = '\u629b\u7aff';
-const TEXT_UPGRADE = '\u5347\u7ea7\u9c7c\u7aff';
-const TEXT_COLLECTION = '\u56fe\u9274';
-const TEXT_GOLD_PREFIX = '\u91d1\u5e01\uff1a';
-const TEXT_ROD_LEVEL_PREFIX = '\u9c7c\u7aff\u7b49\u7ea7\uff1a';
+const TEXT_CAST = '抛竿';
+const TEXT_UPGRADE = '升级鱼竿';
+const TEXT_COLLECTION = '图鉴';
+const TEXT_GOLD_PREFIX = '金币：';
+const TEXT_ROD_LEVEL_PREFIX = '鱼竿等级：';
 
 @ccclass('MainUI')
 export class MainUI extends Component {
@@ -27,6 +27,9 @@ export class MainUI extends Component {
 
     @property(Button)
     public collectionButton: Button | null = null;
+
+    @property(Label)
+    public goldGainLabel: Label | null = null;
 
     public onCastRequested: (() => void) | null = null;
     public onUpgradeRequested: (() => void) | null = null;
@@ -63,6 +66,40 @@ export class MainUI extends Component {
         }
     }
 
+    public playGoldGain(amount: number): void {
+        this.ensureDefaultControls();
+
+        if (!this.goldGainLabel) {
+            return;
+        }
+
+        const label = this.goldGainLabel;
+        const node = label.node;
+        const opacity = node.getComponent(UIOpacity) ?? node.addComponent(UIOpacity);
+        const startPosition = new Vec3(-210, 468, 0);
+
+        Tween.stopAllByTarget(node);
+        Tween.stopAllByTarget(opacity);
+
+        label.string = `+${amount}`;
+        label.color = new Color(255, 221, 67, 255);
+        node.active = true;
+        node.setPosition(startPosition);
+        opacity.opacity = 255;
+
+        tween(node)
+            .to(1, { position: new Vec3(startPosition.x, startPosition.y + 48, startPosition.z) })
+            .start();
+
+        tween(opacity)
+            .to(1, { opacity: 0 })
+            .call(() => {
+                node.active = false;
+                node.setPosition(startPosition);
+            })
+            .start();
+    }
+
     public setMainButtonsInteractable(interactable: boolean): void {
         if (this.castButton) {
             this.castButton.interactable = interactable;
@@ -73,6 +110,25 @@ export class MainUI extends Component {
         if (this.collectionButton) {
             this.collectionButton.interactable = interactable;
         }
+    }
+
+    public setHudVisible(visible: boolean): void {
+        this.setNodeActive(this.goldLabel?.node, visible);
+        this.setNodeActive(this.rodLevelLabel?.node, visible);
+        this.setNodeActive(this.statusLabel?.node, visible);
+        this.setNodeActive(this.castButton?.node, visible);
+        this.setNodeActive(this.upgradeButton?.node, visible);
+        this.setNodeActive(this.collectionButton?.node, visible);
+
+        if (!visible) {
+            this.setNodeActive(this.goldGainLabel?.node, false);
+        }
+    }
+
+    public isPointInFunctionArea(screenPoint: Vec2): boolean {
+        return this.isPointInButton(this.castButton, screenPoint)
+            || this.isPointInButton(this.upgradeButton, screenPoint)
+            || this.isPointInButton(this.collectionButton, screenPoint);
     }
 
     public setCastButtonInteractable(interactable: boolean): void {
@@ -105,6 +161,21 @@ export class MainUI extends Component {
         this.onCollectionButtonClicked();
     }
 
+    private setNodeActive(node: Node | undefined, active: boolean): void {
+        if (node) {
+            node.active = active;
+        }
+    }
+
+    private isPointInButton(button: Button | null, screenPoint: Vec2): boolean {
+        if (!button?.node.activeInHierarchy) {
+            return false;
+        }
+
+        const transform = button.node.getComponent(UITransform);
+        return transform?.getBoundingBoxToWorld().contains(screenPoint) ?? false;
+    }
+
     private ensureDefaultControls(): void {
         this.goldLabel ??= this.findLabel('GoldLabel') ?? this.createFallbackLabel('GoldLabel', -210, 510, 240, 44, 22);
         this.rodLevelLabel ??= this.findLabel('RodLevelLabel') ?? this.createFallbackLabel('RodLevelLabel', 210, 510, 260, 44, 22);
@@ -112,6 +183,8 @@ export class MainUI extends Component {
         this.castButton ??= this.findButton('CastButton') ?? this.createFallbackButton('CastButton', TEXT_CAST, -220, -500, 180, 72, 30);
         this.upgradeButton ??= this.findButton('UpgradeButton') ?? this.createFallbackButton('UpgradeButton', TEXT_UPGRADE, 0, -500, 220, 72, 30);
         this.collectionButton ??= this.findButton('CollectionButton') ?? this.createFallbackButton('CollectionButton', TEXT_COLLECTION, 220, -500, 180, 72, 30);
+        this.goldGainLabel ??= this.findLabel('GoldGainLabel') ?? this.createFallbackLabel('GoldGainLabel', -210, 468, 240, 44, 26);
+        this.goldGainLabel.node.active = false;
     }
 
     private findLabel(name: string): Label | null {

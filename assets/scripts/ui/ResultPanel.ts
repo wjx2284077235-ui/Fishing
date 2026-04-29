@@ -1,10 +1,13 @@
-import { _decorator, Button, Component, Label, Node, UITransform } from 'cc';
-import { FishCatchResult } from '../data/FishData';
+import { _decorator, Button, Color, Component, Graphics, Label, Node, UITransform } from 'cc';
+import { FishCatchResult, getRarityLabel, RARITY_GLOW_COLORS } from '../data/FishData';
 
 const { ccclass, property } = _decorator;
 
 @ccclass('ResultPanel')
 export class ResultPanel extends Component {
+    @property(Graphics)
+    public fishImage: Graphics | null = null;
+
     @property(Label)
     public fishNameLabel: Label | null = null;
 
@@ -19,6 +22,9 @@ export class ResultPanel extends Component {
 
     @property(Label)
     public recordLabel: Label | null = null;
+
+    @property(Label)
+    public imageKeyLabel: Label | null = null;
 
     @property(Button)
     public sellButton: Button | null = null;
@@ -43,21 +49,34 @@ export class ResultPanel extends Component {
     public show(result: FishCatchResult): void {
         this.node.active = true;
         this.ensureDefaultControls();
+        this.drawFishPlaceholder(result);
 
         if (this.fishNameLabel) {
-            this.fishNameLabel.string = `鱼类：${result.fish.name}`;
+            this.fishNameLabel.string = `鱼种：${result.fish.name}`;
         }
         if (this.rarityLabel) {
-            this.rarityLabel.string = `稀有度：${result.fish.rarity}`;
+            const upgradeText = result.upgradedFromRarity
+                ? `（完美提升：${getRarityLabel(result.upgradedFromRarity)} → ${getRarityLabel(result.fish.rarity)}）`
+                : '';
+            this.rarityLabel.string = `稀有度：${getRarityLabel(result.fish.rarity)}${upgradeText}`;
         }
         if (this.weightLabel) {
             this.weightLabel.string = `重量：${result.weight.toFixed(2)} kg`;
         }
         if (this.sellPriceLabel) {
-            this.sellPriceLabel.string = `价值：${result.sellPrice} 金币`;
+            this.sellPriceLabel.string = `售价：${result.sellPrice} 金币`;
         }
         if (this.recordLabel) {
-            this.recordLabel.string = result.isNewRecord ? '新的个人纪录！' : '未打破纪录';
+            const perfectText = result.wasPerfect ? '完美上鱼！' : '';
+            const recordText = result.isNewRecord ? '新的个人纪录！' : '未打破纪录';
+            this.recordLabel.string = perfectText ? `${perfectText} ${recordText}` : recordText;
+        }
+        if (this.imageKeyLabel) {
+            this.imageKeyLabel.string = `图片资源：${result.fish.imageKey}`;
+        }
+        if (this.continueButton) {
+            this.continueButton.node.active = false;
+            this.continueButton.interactable = false;
         }
     }
 
@@ -74,22 +93,70 @@ export class ResultPanel extends Component {
     }
 
     private ensureDefaultControls(): void {
-        this.fishNameLabel ??= this.ensureLabel('FishNameLabel', 0, 150, 560, 48);
-        this.rarityLabel ??= this.ensureLabel('RarityLabel', 0, 95, 560, 44);
-        this.weightLabel ??= this.ensureLabel('WeightLabel', 0, 40, 560, 44);
-        this.sellPriceLabel ??= this.ensureLabel('SellPriceLabel', 0, -15, 560, 44);
-        this.recordLabel ??= this.ensureLabel('RecordLabel', 0, -70, 560, 44);
-        this.sellButton ??= this.ensureButton('SellButton', -120, -155, 180, 64, '出售');
-        this.continueButton ??= this.ensureButton('ContinueButton', 120, -155, 180, 64, '继续钓鱼');
+        this.fishImage ??= this.ensureGraphics('FishImage', 0, 220, 360, 220);
+        this.imageKeyLabel ??= this.ensureLabel('ImageKeyLabel', 0, 95, 560, 34, 18);
+        this.fishNameLabel ??= this.ensureLabel('FishNameLabel', 0, 45, 600, 44, 24);
+        this.rarityLabel ??= this.ensureLabel('RarityLabel', 0, 0, 660, 44, 22);
+        this.weightLabel ??= this.ensureLabel('WeightLabel', 0, -45, 560, 44, 22);
+        this.sellPriceLabel ??= this.ensureLabel('SellPriceLabel', 0, -90, 560, 44, 22);
+        this.recordLabel ??= this.ensureLabel('RecordLabel', 0, -135, 640, 44, 22);
+        this.sellButton ??= this.ensureButton('SellButton', 0, -235, 220, 70, '出售');
+        this.continueButton ??= this.findButton('ContinueButton');
+
+        if (this.continueButton) {
+            this.continueButton.node.active = false;
+            this.continueButton.interactable = false;
+        }
     }
 
-    private ensureLabel(name: string, x: number, y: number, width: number, height: number): Label {
+    private drawFishPlaceholder(result: FishCatchResult): void {
+        if (!this.fishImage) {
+            return;
+        }
+
+        const graphics = this.fishImage;
+        const rarityColor = RARITY_GLOW_COLORS[result.fish.rarity];
+
+        graphics.clear();
+        graphics.lineWidth = 6;
+        graphics.strokeColor = new Color(rarityColor.r, rarityColor.g, rarityColor.b, 255);
+        graphics.fillColor = new Color(31, 48, 63, 235);
+        graphics.roundRect(-170, -95, 340, 190, 16);
+        graphics.fill();
+        graphics.stroke();
+
+        graphics.fillColor = new Color(rarityColor.r, rarityColor.g, rarityColor.b, 210);
+        graphics.ellipse(-20, 0, 110, 52);
+        graphics.fill();
+
+        graphics.fillColor = new Color(rarityColor.r, rarityColor.g, rarityColor.b, 165);
+        graphics.moveTo(-118, 0);
+        graphics.lineTo(-164, 44);
+        graphics.lineTo(-164, -44);
+        graphics.close();
+        graphics.fill();
+
+        graphics.fillColor = new Color(255, 255, 255, 245);
+        graphics.circle(64, 18, 9);
+        graphics.fill();
+
+        graphics.fillColor = new Color(16, 24, 32, 255);
+        graphics.circle(67, 18, 4);
+        graphics.fill();
+    }
+
+    private ensureGraphics(name: string, x: number, y: number, width: number, height: number): Graphics {
+        const node = this.ensureNode(name, x, y, width, height);
+        return node.getComponent(Graphics) ?? node.addComponent(Graphics);
+    }
+
+    private ensureLabel(name: string, x: number, y: number, width: number, height: number, fontSize: number): Label {
         const node = this.ensureNode(name, x, y, width, height);
         const label = node.getComponent(Label) ?? node.addComponent(Label);
         label.horizontalAlign = Label.HorizontalAlign.CENTER;
         label.verticalAlign = Label.VerticalAlign.CENTER;
-        label.fontSize = 24;
-        label.lineHeight = 32;
+        label.fontSize = fontSize;
+        label.lineHeight = fontSize + 8;
         label.string = '';
         return label;
     }
@@ -111,9 +178,13 @@ export class ResultPanel extends Component {
         label.string = text;
         label.horizontalAlign = Label.HorizontalAlign.CENTER;
         label.verticalAlign = Label.VerticalAlign.CENTER;
-        label.fontSize = 22;
-        label.lineHeight = 30;
+        label.fontSize = 24;
+        label.lineHeight = 32;
         return button;
+    }
+
+    private findButton(name: string): Button | null {
+        return this.node.getChildByName(name)?.getComponent(Button) ?? null;
     }
 
     private ensureNode(name: string, x: number, y: number, width: number, height: number): Node {
@@ -124,6 +195,7 @@ export class ResultPanel extends Component {
             this.node.addChild(node);
         }
 
+        node.active = true;
         node.setPosition(x, y, 0);
         const transform = node.getComponent(UITransform) ?? node.addComponent(UITransform);
         transform.setContentSize(width, height);
