@@ -2,6 +2,12 @@ import { _decorator, Button, Component, Label, Node, UITransform } from 'cc';
 
 const { ccclass, property } = _decorator;
 
+const TEXT_CAST = '\u629b\u7aff';
+const TEXT_UPGRADE = '\u5347\u7ea7\u9c7c\u7aff';
+const TEXT_COLLECTION = '\u56fe\u9274';
+const TEXT_GOLD_PREFIX = '\u91d1\u5e01\uff1a';
+const TEXT_ROD_LEVEL_PREFIX = '\u9c7c\u7aff\u7b49\u7ea7\uff1a';
+
 @ccclass('MainUI')
 export class MainUI extends Component {
     @property(Label)
@@ -28,9 +34,6 @@ export class MainUI extends Component {
 
     protected onLoad(): void {
         this.ensureDefaultControls();
-        this.setButtonText(this.castButton, '抛竿');
-        this.setButtonText(this.upgradeButton, '升级鱼竿');
-        this.setButtonText(this.collectionButton, '图鉴');
         this.castButton?.node?.on(Button.EventType.CLICK, this.handleCastClicked, this);
         this.upgradeButton?.node?.on(Button.EventType.CLICK, this.handleUpgradeClicked, this);
         this.collectionButton?.node?.on(Button.EventType.CLICK, this.handleCollectionClicked, this);
@@ -44,13 +47,13 @@ export class MainUI extends Component {
 
     public setGold(gold: number): void {
         if (this.goldLabel) {
-            this.goldLabel.string = `金币：${gold}`;
+            this.goldLabel.string = `${TEXT_GOLD_PREFIX}${gold}`;
         }
     }
 
     public setRodLevel(rodLevel: number): void {
         if (this.rodLevelLabel) {
-            this.rodLevelLabel.string = `鱼竿等级：${rodLevel}`;
+            this.rodLevelLabel.string = `${TEXT_ROD_LEVEL_PREFIX}${rodLevel}`;
         }
     }
 
@@ -103,70 +106,51 @@ export class MainUI extends Component {
     }
 
     private ensureDefaultControls(): void {
-        this.goldLabel ??= this.ensureLabel('GoldLabel');
-        this.rodLevelLabel ??= this.ensureLabel('RodLevelLabel');
-        this.statusLabel ??= this.ensureLabel('StatusLabel');
-        this.castButton ??= this.ensureButton('CastButton', '抛竿');
-        this.upgradeButton ??= this.ensureButton('UpgradeButton', '升级鱼竿');
-        this.collectionButton ??= this.ensureButton('CollectionButton', '图鉴');
-
-        this.layoutLabel(this.goldLabel, -210, 510, 240, 44, 22);
-        this.layoutLabel(this.rodLevelLabel, 210, 510, 260, 44, 22);
-        this.layoutLabel(this.statusLabel, 0, 330, 620, 72, 34);
-        this.layoutButton(this.castButton, -220, -500, 180, 72, 30);
-        this.layoutButton(this.upgradeButton, 0, -500, 220, 72, 30);
-        this.layoutButton(this.collectionButton, 220, -500, 180, 72, 30);
+        this.goldLabel ??= this.findLabel('GoldLabel') ?? this.createFallbackLabel('GoldLabel', -210, 510, 240, 44, 22);
+        this.rodLevelLabel ??= this.findLabel('RodLevelLabel') ?? this.createFallbackLabel('RodLevelLabel', 210, 510, 260, 44, 22);
+        this.statusLabel ??= this.findLabel('StatusLabel') ?? this.createFallbackLabel('StatusLabel', 0, 330, 620, 72, 34);
+        this.castButton ??= this.findButton('CastButton') ?? this.createFallbackButton('CastButton', TEXT_CAST, -220, -500, 180, 72, 30);
+        this.upgradeButton ??= this.findButton('UpgradeButton') ?? this.createFallbackButton('UpgradeButton', TEXT_UPGRADE, 0, -500, 220, 72, 30);
+        this.collectionButton ??= this.findButton('CollectionButton') ?? this.createFallbackButton('CollectionButton', TEXT_COLLECTION, 220, -500, 180, 72, 30);
     }
 
-    private ensureLabel(name: string): Label {
-        const node = this.ensureNode(name);
-        return node.getComponent(Label) ?? node.addComponent(Label);
+    private findLabel(name: string): Label | null {
+        return this.findChildDeep(this.node, name)?.getComponent(Label) ?? null;
     }
 
-    private ensureButton(name: string, text: string): Button {
-        const node = this.ensureNode(name);
-        const button = node.getComponent(Button) ?? node.addComponent(Button);
+    private findButton(name: string): Button | null {
+        return this.findChildDeep(this.node, name)?.getComponent(Button) ?? null;
+    }
+
+    private createFallbackLabel(name: string, x: number, y: number, width: number, height: number, fontSize: number): Label {
+        const node = new Node(name);
+        this.node.addChild(node);
+        this.layoutNode(node, x, y, width, height);
+        const label = node.addComponent(Label);
+        label.horizontalAlign = Label.HorizontalAlign.CENTER;
+        label.verticalAlign = Label.VerticalAlign.CENTER;
+        label.fontSize = fontSize;
+        label.lineHeight = fontSize + 8;
+        return label;
+    }
+
+    private createFallbackButton(name: string, text: string, x: number, y: number, width: number, height: number, fontSize: number): Button {
+        const node = new Node(name);
+        this.node.addChild(node);
+        this.layoutNode(node, x, y, width, height);
+        const button = node.addComponent(Button);
         button.transition = Button.Transition.NONE;
-        this.setButtonText(button, text);
+
+        const labelNode = new Node(`${name}Label`);
+        node.addChild(labelNode);
+        this.layoutNode(labelNode, 0, 0, width, height);
+        const label = labelNode.addComponent(Label);
+        label.string = text;
+        label.horizontalAlign = Label.HorizontalAlign.CENTER;
+        label.verticalAlign = Label.VerticalAlign.CENTER;
+        label.fontSize = fontSize;
+        label.lineHeight = fontSize + 8;
         return button;
-    }
-
-    private ensureNode(name: string): Node {
-        let node = this.node.getChildByName(name);
-
-        if (!node) {
-            node = new Node(name);
-            this.node.addChild(node);
-        }
-
-        return node;
-    }
-
-    private layoutLabel(label: Label | null, x: number, y: number, width: number, height: number, fontSize: number): void {
-        if (!label) {
-            return;
-        }
-
-        this.layoutNode(label.node, x, y, width, height);
-        label.horizontalAlign = Label.HorizontalAlign.CENTER;
-        label.verticalAlign = Label.VerticalAlign.CENTER;
-        label.fontSize = fontSize;
-        label.lineHeight = fontSize + 8;
-    }
-
-    private layoutButton(button: Button | null, x: number, y: number, width: number, height: number, fontSize: number): void {
-        if (!button) {
-            return;
-        }
-
-        this.layoutNode(button.node, x, y, width, height);
-        button.transition = Button.Transition.NONE;
-        const labelNode = this.getOrCreateButtonLabelNode(button, width, height);
-        const label = labelNode.getComponent(Label) ?? labelNode.addComponent(Label);
-        label.horizontalAlign = Label.HorizontalAlign.CENTER;
-        label.verticalAlign = Label.VerticalAlign.CENTER;
-        label.fontSize = fontSize;
-        label.lineHeight = fontSize + 8;
     }
 
     private layoutNode(node: Node, x: number, y: number, width: number, height: number): void {
@@ -175,29 +159,19 @@ export class MainUI extends Component {
         transform.setContentSize(width, height);
     }
 
-    private setButtonText(button: Button | null, text: string): void {
-        if (!button) {
-            return;
+    private findChildDeep(root: Node, name: string): Node | null {
+        if (root.name === name) {
+            return root;
         }
 
-        const labelNode = this.getOrCreateButtonLabelNode(button, 180, 72);
-        const label = labelNode.getComponent(Label) ?? labelNode.addComponent(Label);
-        label.string = text;
-        label.horizontalAlign = Label.HorizontalAlign.CENTER;
-        label.verticalAlign = Label.VerticalAlign.CENTER;
-    }
+        for (const child of root.children) {
+            const found = this.findChildDeep(child, name);
 
-    private getOrCreateButtonLabelNode(button: Button, width: number, height: number): Node {
-        let labelNode = button.node.children.find((child) => Boolean(child.getComponent(Label)));
-
-        if (!labelNode) {
-            labelNode = new Node(`${button.node.name}Label`);
-            button.node.addChild(labelNode);
+            if (found) {
+                return found;
+            }
         }
 
-        labelNode.setPosition(0, 0, 0);
-        const transform = labelNode.getComponent(UITransform) ?? labelNode.addComponent(UITransform);
-        transform.setContentSize(width, height);
-        return labelNode;
+        return null;
     }
 }

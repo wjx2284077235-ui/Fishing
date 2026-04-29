@@ -3,6 +3,9 @@ import { isAngleInSafeZone, normalizeAngle } from '../data/FishData';
 
 const { ccclass, property } = _decorator;
 
+const TEXT_HIT_PREFIX = '\u547d\u4e2d ';
+const TEXT_JUDGE = '\u70b9\u51fb\u5224\u5b9a';
+
 @ccclass('FishingDialUI')
 export class FishingDialUI extends Component {
     @property(Graphics)
@@ -29,6 +32,7 @@ export class FishingDialUI extends Component {
     private _isRunning = false;
     private _radius = 150;
     private _ringWidth = 42;
+    private _ownsPointerGraphics = false;
 
     protected onLoad(): void {
         this.ensureDefaultControls();
@@ -62,6 +66,7 @@ export class FishingDialUI extends Component {
         this._isRunning = true;
 
         this.drawDial();
+        this.drawPointer();
         this.updatePointer();
         this.updateProgressLabel();
     }
@@ -96,6 +101,7 @@ export class FishingDialUI extends Component {
         this._safeStartAngle = Math.random() * 360;
         this._pointerAngle = 0;
         this.drawDial();
+        this.drawPointer();
         this.updatePointer();
     }
 
@@ -144,7 +150,7 @@ export class FishingDialUI extends Component {
 
     private updateProgressLabel(): void {
         if (this.progressLabel) {
-            this.progressLabel.string = `命中 ${this._currentSuccessCount} / ${this._requiredSuccessCount}`;
+            this.progressLabel.string = `${TEXT_HIT_PREFIX}${this._currentSuccessCount} / ${this._requiredSuccessCount}`;
         }
     }
 
@@ -153,31 +159,40 @@ export class FishingDialUI extends Component {
     }
 
     private ensureDefaultControls(): void {
-        this.dialGraphics ??= this.ensureGraphics('DialGraphics');
-        this.pointerNode ??= this.ensurePointerNode();
-        this.progressLabel ??= this.ensureLabel('ProgressLabel');
-        this.judgeButton ??= this.ensureButton('JudgeButton', '点击判定');
+        this.dialGraphics ??= this.findGraphics('DialGraphics') ?? this.createFallbackGraphics('DialGraphics', 0, 50, 380, 380);
+        this.pointerNode ??= this.findChildDeep(this.node, 'Pointer') ?? this.createFallbackPointer();
+        this.progressLabel ??= this.findLabel('ProgressLabel') ?? this.createFallbackLabel('ProgressLabel', 0, -185, 360, 48, 28);
+        this.judgeButton ??= this.findButton('JudgeButton') ?? this.createFallbackButton('JudgeButton', TEXT_JUDGE, 0, -260, 220, 68, 24);
 
-        this.layoutNode(this.dialGraphics.node, 0, 50, 380, 380);
-        this.layoutNode(this.pointerNode, 0, 50, 20, 170);
-        this.layoutNode(this.progressLabel.node, 0, -185, 360, 48);
-        this.layoutNode(this.judgeButton.node, 0, -260, 220, 68);
-
-        this.progressLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
-        this.progressLabel.verticalAlign = Label.VerticalAlign.CENTER;
-        this.progressLabel.fontSize = 28;
-        this.progressLabel.lineHeight = 36;
-        this.setButtonText(this.judgeButton, '点击判定', 24);
         this.drawPointer();
     }
 
-    private ensureGraphics(name: string): Graphics {
-        const node = this.ensureNode(name);
-        return node.getComponent(Graphics) ?? node.addComponent(Graphics);
+    private findGraphics(name: string): Graphics | null {
+        return this.findChildDeep(this.node, name)?.getComponent(Graphics) ?? null;
     }
 
-    private ensurePointerNode(): Node {
-        return this.ensureNode('Pointer');
+    private findLabel(name: string): Label | null {
+        return this.findChildDeep(this.node, name)?.getComponent(Label) ?? null;
+    }
+
+    private findButton(name: string): Button | null {
+        return this.findChildDeep(this.node, name)?.getComponent(Button) ?? null;
+    }
+
+    private createFallbackGraphics(name: string, x: number, y: number, width: number, height: number): Graphics {
+        const node = new Node(name);
+        this.node.addChild(node);
+        this.layoutNode(node, x, y, width, height);
+        return node.addComponent(Graphics);
+    }
+
+    private createFallbackPointer(): Node {
+        const node = new Node('Pointer');
+        this.node.addChild(node);
+        this.layoutNode(node, 0, 50, 20, 170);
+        node.addComponent(Graphics);
+        this._ownsPointerGraphics = true;
+        return node;
     }
 
     private drawPointer(): void {
@@ -185,7 +200,12 @@ export class FishingDialUI extends Component {
             return;
         }
 
-        const graphics = this.pointerNode.getComponent(Graphics) ?? this.pointerNode.addComponent(Graphics);
+        const graphics = this.pointerNode.getComponent(Graphics);
+
+        if (!graphics || !this._ownsPointerGraphics) {
+            return;
+        }
+
         graphics.clear();
         graphics.lineWidth = 10;
         graphics.strokeColor = new Color(255, 231, 116, 255);
@@ -197,27 +217,34 @@ export class FishingDialUI extends Component {
         graphics.fill();
     }
 
-    private ensureLabel(name: string): Label {
-        const node = this.ensureNode(name);
-        return node.getComponent(Label) ?? node.addComponent(Label);
+    private createFallbackLabel(name: string, x: number, y: number, width: number, height: number, fontSize: number): Label {
+        const node = new Node(name);
+        this.node.addChild(node);
+        this.layoutNode(node, x, y, width, height);
+        const label = node.addComponent(Label);
+        label.horizontalAlign = Label.HorizontalAlign.CENTER;
+        label.verticalAlign = Label.VerticalAlign.CENTER;
+        label.fontSize = fontSize;
+        label.lineHeight = fontSize + 8;
+        return label;
     }
 
-    private ensureButton(name: string, text: string): Button {
-        const node = this.ensureNode(name);
-        const button = node.getComponent(Button) ?? node.addComponent(Button);
-        this.setButtonText(button, text, 24);
+    private createFallbackButton(name: string, text: string, x: number, y: number, width: number, height: number, fontSize: number): Button {
+        const node = new Node(name);
+        this.node.addChild(node);
+        this.layoutNode(node, x, y, width, height);
+        const button = node.addComponent(Button);
+
+        const labelNode = new Node(`${name}Label`);
+        node.addChild(labelNode);
+        this.layoutNode(labelNode, 0, 0, width, height);
+        const label = labelNode.addComponent(Label);
+        label.string = text;
+        label.horizontalAlign = Label.HorizontalAlign.CENTER;
+        label.verticalAlign = Label.VerticalAlign.CENTER;
+        label.fontSize = fontSize;
+        label.lineHeight = fontSize + 8;
         return button;
-    }
-
-    private ensureNode(name: string): Node {
-        let node = this.node.getChildByName(name);
-
-        if (!node) {
-            node = new Node(name);
-            this.node.addChild(node);
-        }
-
-        return node;
     }
 
     private layoutNode(node: Node, x: number, y: number, width: number, height: number): void {
@@ -226,24 +253,19 @@ export class FishingDialUI extends Component {
         transform.setContentSize(width, height);
     }
 
-    private setButtonText(button: Button | null, text: string, fontSize: number): void {
-        if (!button) {
-            return;
+    private findChildDeep(root: Node, name: string): Node | null {
+        if (root.name === name) {
+            return root;
         }
 
-        let labelNode = button.node.children.find((child) => Boolean(child.getComponent(Label)));
+        for (const child of root.children) {
+            const found = this.findChildDeep(child, name);
 
-        if (!labelNode) {
-            labelNode = new Node(`${button.node.name}Label`);
-            button.node.addChild(labelNode);
+            if (found) {
+                return found;
+            }
         }
 
-        this.layoutNode(labelNode, 0, 0, 220, 68);
-        const label = labelNode.getComponent(Label) ?? labelNode.addComponent(Label);
-        label.string = text;
-        label.horizontalAlign = Label.HorizontalAlign.CENTER;
-        label.verticalAlign = Label.VerticalAlign.CENTER;
-        label.fontSize = fontSize;
-        label.lineHeight = fontSize + 8;
+        return null;
     }
 }
