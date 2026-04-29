@@ -1,0 +1,33 @@
+
+# Cocos Creator project
+library/
+temp/
+local/
+build/
+profiles/
+native
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build/cache output
+dist/
+out/
+.cache/
+.temp/
+
+# Editor settings
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
