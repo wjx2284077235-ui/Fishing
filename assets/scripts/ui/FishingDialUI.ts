@@ -27,7 +27,8 @@ export class FishingDialUI extends Component {
     private _currentSuccessCount = 0;
     private _requiredSuccessCount = 1;
     private _isRunning = false;
-    private _radius = 180;
+    private _radius = 150;
+    private _ringWidth = 42;
 
     protected onLoad(): void {
         this.ensureDefaultControls();
@@ -107,30 +108,29 @@ export class FishingDialUI extends Component {
         const transform = graphics.getComponent(UITransform);
 
         if (transform) {
-            this._radius = Math.min(transform.width, transform.height) * 0.45;
+            this._radius = Math.min(transform.width, transform.height) * 0.38;
+            this._ringWidth = Math.max(28, this._radius * 0.24);
         }
 
         graphics.clear();
 
-        graphics.fillColor = new Color(32, 48, 74, 220);
-        graphics.strokeColor = new Color(226, 238, 255, 255);
-        graphics.lineWidth = 4;
+        graphics.lineWidth = this._ringWidth;
+        graphics.strokeColor = new Color(224, 73, 77, 235);
         graphics.circle(0, 0, this._radius);
-        graphics.fill();
         graphics.stroke();
 
         const startRadians = this.degreesToRadians(this._safeStartAngle - 90);
         const endRadians = this.degreesToRadians(this._safeStartAngle + this._safeZoneAngle - 90);
 
-        graphics.fillColor = new Color(78, 214, 132, 230);
-        graphics.moveTo(0, 0);
-        graphics.arc(0, 0, this._radius, startRadians, endRadians, false);
-        graphics.close();
-        graphics.fill();
+        graphics.strokeColor = new Color(67, 204, 119, 245);
+        graphics.arc(0, 0, this._radius, startRadians, endRadians, true);
+        graphics.stroke();
 
-        graphics.strokeColor = new Color(255, 255, 255, 255);
-        graphics.lineWidth = 2;
-        graphics.circle(0, 0, this._radius);
+        graphics.lineWidth = 4;
+        graphics.strokeColor = new Color(235, 244, 255, 255);
+        graphics.circle(0, 0, this._radius + this._ringWidth * 0.5);
+        graphics.stroke();
+        graphics.circle(0, 0, this._radius - this._ringWidth * 0.5);
         graphics.stroke();
     }
 
@@ -153,60 +153,63 @@ export class FishingDialUI extends Component {
     }
 
     private ensureDefaultControls(): void {
-        this.dialGraphics ??= this.ensureGraphics('DialGraphics', 0, 80, 420, 420);
+        this.dialGraphics ??= this.ensureGraphics('DialGraphics');
         this.pointerNode ??= this.ensurePointerNode();
-        this.progressLabel ??= this.ensureLabel('ProgressLabel', 0, -170, 360, 50);
-        this.judgeButton ??= this.ensureButton('JudgeButton', 0, -260, 220, 72, '点击判定');
+        this.progressLabel ??= this.ensureLabel('ProgressLabel');
+        this.judgeButton ??= this.ensureButton('JudgeButton', '点击判定');
+
+        this.layoutNode(this.dialGraphics.node, 0, 50, 380, 380);
+        this.layoutNode(this.pointerNode, 0, 50, 20, 170);
+        this.layoutNode(this.progressLabel.node, 0, -185, 360, 48);
+        this.layoutNode(this.judgeButton.node, 0, -260, 220, 68);
+
+        this.progressLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        this.progressLabel.verticalAlign = Label.VerticalAlign.CENTER;
+        this.progressLabel.fontSize = 28;
+        this.progressLabel.lineHeight = 36;
+        this.setButtonText(this.judgeButton, '点击判定', 24);
+        this.drawPointer();
     }
 
-    private ensureGraphics(name: string, x: number, y: number, width: number, height: number): Graphics {
-        const node = this.ensureNode(name, x, y, width, height);
+    private ensureGraphics(name: string): Graphics {
+        const node = this.ensureNode(name);
         return node.getComponent(Graphics) ?? node.addComponent(Graphics);
     }
 
     private ensurePointerNode(): Node {
-        const node = this.ensureNode('Pointer', 0, 80, 16, 180);
-        const graphics = node.getComponent(Graphics) ?? node.addComponent(Graphics);
-        graphics.clear();
-        graphics.fillColor = new Color(255, 236, 142, 255);
-        graphics.roundRect(-4, 0, 8, 170, 4);
-        graphics.fill();
-        return node;
+        return this.ensureNode('Pointer');
     }
 
-    private ensureLabel(name: string, x: number, y: number, width: number, height: number): Label {
-        const node = this.ensureNode(name, x, y, width, height);
-        const label = node.getComponent(Label) ?? node.addComponent(Label);
-        label.horizontalAlign = Label.HorizontalAlign.CENTER;
-        label.verticalAlign = Label.VerticalAlign.CENTER;
-        label.fontSize = 24;
-        label.lineHeight = 32;
-        return label;
-    }
-
-    private ensureButton(name: string, x: number, y: number, width: number, height: number, text: string): Button {
-        const node = this.ensureNode(name, x, y, width, height);
-        const button = node.getComponent(Button) ?? node.addComponent(Button);
-        let labelNode = node.children.find((child) => Boolean(child.getComponent(Label)));
-
-        if (!labelNode) {
-            labelNode = new Node(`${name}Label`);
-            node.addChild(labelNode);
-            const transform = labelNode.addComponent(UITransform);
-            transform.setContentSize(width, height);
-            labelNode.setPosition(0, 0, 0);
+    private drawPointer(): void {
+        if (!this.pointerNode) {
+            return;
         }
 
-        const label = labelNode.getComponent(Label) ?? labelNode.addComponent(Label);
-        label.string = text;
-        label.horizontalAlign = Label.HorizontalAlign.CENTER;
-        label.verticalAlign = Label.VerticalAlign.CENTER;
-        label.fontSize = 24;
-        label.lineHeight = 32;
+        const graphics = this.pointerNode.getComponent(Graphics) ?? this.pointerNode.addComponent(Graphics);
+        graphics.clear();
+        graphics.lineWidth = 10;
+        graphics.strokeColor = new Color(255, 231, 116, 255);
+        graphics.moveTo(0, 0);
+        graphics.lineTo(0, this._radius + this._ringWidth * 0.5 + 8);
+        graphics.stroke();
+        graphics.fillColor = new Color(255, 231, 116, 255);
+        graphics.circle(0, 0, 8);
+        graphics.fill();
+    }
+
+    private ensureLabel(name: string): Label {
+        const node = this.ensureNode(name);
+        return node.getComponent(Label) ?? node.addComponent(Label);
+    }
+
+    private ensureButton(name: string, text: string): Button {
+        const node = this.ensureNode(name);
+        const button = node.getComponent(Button) ?? node.addComponent(Button);
+        this.setButtonText(button, text, 24);
         return button;
     }
 
-    private ensureNode(name: string, x: number, y: number, width: number, height: number): Node {
+    private ensureNode(name: string): Node {
         let node = this.node.getChildByName(name);
 
         if (!node) {
@@ -214,9 +217,33 @@ export class FishingDialUI extends Component {
             this.node.addChild(node);
         }
 
+        return node;
+    }
+
+    private layoutNode(node: Node, x: number, y: number, width: number, height: number): void {
         node.setPosition(x, y, 0);
         const transform = node.getComponent(UITransform) ?? node.addComponent(UITransform);
         transform.setContentSize(width, height);
-        return node;
+    }
+
+    private setButtonText(button: Button | null, text: string, fontSize: number): void {
+        if (!button) {
+            return;
+        }
+
+        let labelNode = button.node.children.find((child) => Boolean(child.getComponent(Label)));
+
+        if (!labelNode) {
+            labelNode = new Node(`${button.node.name}Label`);
+            button.node.addChild(labelNode);
+        }
+
+        this.layoutNode(labelNode, 0, 0, 220, 68);
+        const label = labelNode.getComponent(Label) ?? labelNode.addComponent(Label);
+        label.string = text;
+        label.horizontalAlign = Label.HorizontalAlign.CENTER;
+        label.verticalAlign = Label.VerticalAlign.CENTER;
+        label.fontSize = fontSize;
+        label.lineHeight = fontSize + 8;
     }
 }

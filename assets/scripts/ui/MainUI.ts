@@ -44,13 +44,13 @@ export class MainUI extends Component {
 
     public setGold(gold: number): void {
         if (this.goldLabel) {
-            this.goldLabel.string = `Gold: ${gold}`;
+            this.goldLabel.string = `金币：${gold}`;
         }
     }
 
     public setRodLevel(rodLevel: number): void {
         if (this.rodLevelLabel) {
-            this.rodLevelLabel.string = `Rod Lv.${rodLevel}`;
+            this.rodLevelLabel.string = `鱼竿等级：${rodLevel}`;
         }
     }
 
@@ -103,34 +103,35 @@ export class MainUI extends Component {
     }
 
     private ensureDefaultControls(): void {
-        this.goldLabel ??= this.ensureLabel('GoldLabel', -200, 560, 220, 48);
-        this.rodLevelLabel ??= this.ensureLabel('RodLevelLabel', 200, 560, 220, 48);
-        this.statusLabel ??= this.ensureLabel('StatusLabel', 0, 120, 620, 64);
-        this.castButton ??= this.ensureButton('CastButton', -220, -500, 180, 72, '抛竿');
-        this.upgradeButton ??= this.ensureButton('UpgradeButton', 0, -500, 180, 72, '升级鱼竿');
-        this.collectionButton ??= this.ensureButton('CollectionButton', 220, -500, 180, 72, '图鉴');
+        this.goldLabel ??= this.ensureLabel('GoldLabel');
+        this.rodLevelLabel ??= this.ensureLabel('RodLevelLabel');
+        this.statusLabel ??= this.ensureLabel('StatusLabel');
+        this.castButton ??= this.ensureButton('CastButton', '抛竿');
+        this.upgradeButton ??= this.ensureButton('UpgradeButton', '升级鱼竿');
+        this.collectionButton ??= this.ensureButton('CollectionButton', '图鉴');
+
+        this.layoutLabel(this.goldLabel, -210, 510, 240, 44, 22);
+        this.layoutLabel(this.rodLevelLabel, 210, 510, 260, 44, 22);
+        this.layoutLabel(this.statusLabel, 0, 330, 620, 72, 34);
+        this.layoutButton(this.castButton, -220, -500, 180, 72, 30);
+        this.layoutButton(this.upgradeButton, 0, -500, 220, 72, 30);
+        this.layoutButton(this.collectionButton, 220, -500, 180, 72, 30);
     }
 
-    private ensureLabel(name: string, x: number, y: number, width: number, height: number): Label {
-        const node = this.ensureNode(name, x, y, width, height);
-        const label = node.getComponent(Label) ?? node.addComponent(Label);
-        label.horizontalAlign = Label.HorizontalAlign.CENTER;
-        label.verticalAlign = Label.VerticalAlign.CENTER;
-        label.fontSize = 24;
-        label.lineHeight = 32;
-        label.string = '';
-        return label;
+    private ensureLabel(name: string): Label {
+        const node = this.ensureNode(name);
+        return node.getComponent(Label) ?? node.addComponent(Label);
     }
 
-    private ensureButton(name: string, x: number, y: number, width: number, height: number, text: string): Button {
-        const node = this.ensureNode(name, x, y, width, height);
+    private ensureButton(name: string, text: string): Button {
+        const node = this.ensureNode(name);
         const button = node.getComponent(Button) ?? node.addComponent(Button);
         button.transition = Button.Transition.NONE;
         this.setButtonText(button, text);
         return button;
     }
 
-    private ensureNode(name: string, x: number, y: number, width: number, height: number): Node {
+    private ensureNode(name: string): Node {
         let node = this.node.getChildByName(name);
 
         if (!node) {
@@ -138,10 +139,40 @@ export class MainUI extends Component {
             this.node.addChild(node);
         }
 
+        return node;
+    }
+
+    private layoutLabel(label: Label | null, x: number, y: number, width: number, height: number, fontSize: number): void {
+        if (!label) {
+            return;
+        }
+
+        this.layoutNode(label.node, x, y, width, height);
+        label.horizontalAlign = Label.HorizontalAlign.CENTER;
+        label.verticalAlign = Label.VerticalAlign.CENTER;
+        label.fontSize = fontSize;
+        label.lineHeight = fontSize + 8;
+    }
+
+    private layoutButton(button: Button | null, x: number, y: number, width: number, height: number, fontSize: number): void {
+        if (!button) {
+            return;
+        }
+
+        this.layoutNode(button.node, x, y, width, height);
+        button.transition = Button.Transition.NONE;
+        const labelNode = this.getOrCreateButtonLabelNode(button, width, height);
+        const label = labelNode.getComponent(Label) ?? labelNode.addComponent(Label);
+        label.horizontalAlign = Label.HorizontalAlign.CENTER;
+        label.verticalAlign = Label.VerticalAlign.CENTER;
+        label.fontSize = fontSize;
+        label.lineHeight = fontSize + 8;
+    }
+
+    private layoutNode(node: Node, x: number, y: number, width: number, height: number): void {
         node.setPosition(x, y, 0);
         const transform = node.getComponent(UITransform) ?? node.addComponent(UITransform);
         transform.setContentSize(width, height);
-        return node;
     }
 
     private setButtonText(button: Button | null, text: string): void {
@@ -149,21 +180,24 @@ export class MainUI extends Component {
             return;
         }
 
+        const labelNode = this.getOrCreateButtonLabelNode(button, 180, 72);
+        const label = labelNode.getComponent(Label) ?? labelNode.addComponent(Label);
+        label.string = text;
+        label.horizontalAlign = Label.HorizontalAlign.CENTER;
+        label.verticalAlign = Label.VerticalAlign.CENTER;
+    }
+
+    private getOrCreateButtonLabelNode(button: Button, width: number, height: number): Node {
         let labelNode = button.node.children.find((child) => Boolean(child.getComponent(Label)));
 
         if (!labelNode) {
             labelNode = new Node(`${button.node.name}Label`);
             button.node.addChild(labelNode);
-            const transform = labelNode.addComponent(UITransform);
-            transform.setContentSize(160, 48);
-            labelNode.setPosition(0, 0, 0);
         }
 
-        const label = labelNode.getComponent(Label) ?? labelNode.addComponent(Label);
-        label.string = text;
-        label.horizontalAlign = Label.HorizontalAlign.CENTER;
-        label.verticalAlign = Label.VerticalAlign.CENTER;
-        label.fontSize = 22;
-        label.lineHeight = 30;
+        labelNode.setPosition(0, 0, 0);
+        const transform = labelNode.getComponent(UITransform) ?? labelNode.addComponent(UITransform);
+        transform.setContentSize(width, height);
+        return labelNode;
     }
 }
