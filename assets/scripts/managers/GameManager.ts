@@ -56,7 +56,7 @@ export class GameManager extends Component {
             return;
         }
 
-        this.setState(GameState.WaitingForBite, '等待鱼咬钩……');
+        this.setState(GameState.WaitingForBite, '等待鱼儿咬钩...');
         const waitSeconds = 1.5 + Math.random() * 1.5;
         this.scheduleOnce(() => this.handleFishBite(), waitSeconds);
     }
@@ -73,7 +73,7 @@ export class GameManager extends Component {
         const cost = this.getUpgradeCost();
 
         if (this._gold < cost) {
-            this.mainUI?.setStatus('金币不足');
+            this.mainUI?.setStatus(`金币不足，需要 ${cost} 金币`);
             return;
         }
 
@@ -195,7 +195,7 @@ export class GameManager extends Component {
         }
 
         this._currentFish = selectRandomFish();
-        this.mainUI?.setStatus('鱼咬钩了！');
+        this.mainUI?.setStatus('鱼儿咬钩了！');
         this.setState(GameState.FishingChallenge);
         this.fishingDialUI?.startChallenge(
             this.getFinalSafeZoneAngle(this._currentFish),

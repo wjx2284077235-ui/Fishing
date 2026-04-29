@@ -1281,11 +1281,7 @@
     },
     "_enabled": true,
     "__prefab": null,
-    "clickEvents": [
-      {
-        "__id__": 32
-      }
-    ],
+    "clickEvents": [],
     "_interactable": true,
     "_transition": 0,
     "_normalColor": {
@@ -1553,11 +1549,7 @@
     },
     "_enabled": true,
     "__prefab": null,
-    "clickEvents": [
-      {
-        "__id__": 39
-      }
-    ],
+    "clickEvents": [],
     "_interactable": true,
     "_transition": 0,
     "_normalColor": {
@@ -1823,11 +1815,7 @@
     },
     "_enabled": true,
     "__prefab": null,
-    "clickEvents": [
-      {
-        "__id__": 46
-      }
-    ],
+    "clickEvents": [],
     "_interactable": true,
     "_transition": 0,
     "_normalColor": {

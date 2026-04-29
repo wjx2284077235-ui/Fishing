@@ -30,6 +30,7 @@ export class FishingDialUI extends Component {
     private _radius = 180;
 
     protected onLoad(): void {
+        this.ensureDefaultControls();
         this.judgeButton?.node?.on(Button.EventType.CLICK, this.handleJudgeClicked, this);
         this.dialGraphics?.node?.on(Node.EventType.TOUCH_END, this.handleJudgeClicked, this);
     }
@@ -50,6 +51,7 @@ export class FishingDialUI extends Component {
 
     public startChallenge(safeZoneAngle: number, pointerSpeed: number, requiredSuccessCount: number): void {
         this.node.active = true;
+        this.ensureDefaultControls();
         this._pointerAngle = 0;
         this._safeStartAngle = Math.random() * 360;
         this._safeZoneAngle = safeZoneAngle;
@@ -142,11 +144,79 @@ export class FishingDialUI extends Component {
 
     private updateProgressLabel(): void {
         if (this.progressLabel) {
-            this.progressLabel.string = `${this._currentSuccessCount} / ${this._requiredSuccessCount}`;
+            this.progressLabel.string = `命中 ${this._currentSuccessCount} / ${this._requiredSuccessCount}`;
         }
     }
 
     private degreesToRadians(degrees: number): number {
         return (degrees * Math.PI) / 180;
+    }
+
+    private ensureDefaultControls(): void {
+        this.dialGraphics ??= this.ensureGraphics('DialGraphics', 0, 80, 420, 420);
+        this.pointerNode ??= this.ensurePointerNode();
+        this.progressLabel ??= this.ensureLabel('ProgressLabel', 0, -170, 360, 50);
+        this.judgeButton ??= this.ensureButton('JudgeButton', 0, -260, 220, 72, '点击判定');
+    }
+
+    private ensureGraphics(name: string, x: number, y: number, width: number, height: number): Graphics {
+        const node = this.ensureNode(name, x, y, width, height);
+        return node.getComponent(Graphics) ?? node.addComponent(Graphics);
+    }
+
+    private ensurePointerNode(): Node {
+        const node = this.ensureNode('Pointer', 0, 80, 16, 180);
+        const graphics = node.getComponent(Graphics) ?? node.addComponent(Graphics);
+        graphics.clear();
+        graphics.fillColor = new Color(255, 236, 142, 255);
+        graphics.roundRect(-4, 0, 8, 170, 4);
+        graphics.fill();
+        return node;
+    }
+
+    private ensureLabel(name: string, x: number, y: number, width: number, height: number): Label {
+        const node = this.ensureNode(name, x, y, width, height);
+        const label = node.getComponent(Label) ?? node.addComponent(Label);
+        label.horizontalAlign = Label.HorizontalAlign.CENTER;
+        label.verticalAlign = Label.VerticalAlign.CENTER;
+        label.fontSize = 24;
+        label.lineHeight = 32;
+        return label;
+    }
+
+    private ensureButton(name: string, x: number, y: number, width: number, height: number, text: string): Button {
+        const node = this.ensureNode(name, x, y, width, height);
+        const button = node.getComponent(Button) ?? node.addComponent(Button);
+        let labelNode = node.children.find((child) => Boolean(child.getComponent(Label)));
+
+        if (!labelNode) {
+            labelNode = new Node(`${name}Label`);
+            node.addChild(labelNode);
+            const transform = labelNode.addComponent(UITransform);
+            transform.setContentSize(width, height);
+            labelNode.setPosition(0, 0, 0);
+        }
+
+        const label = labelNode.getComponent(Label) ?? labelNode.addComponent(Label);
+        label.string = text;
+        label.horizontalAlign = Label.HorizontalAlign.CENTER;
+        label.verticalAlign = Label.VerticalAlign.CENTER;
+        label.fontSize = 24;
+        label.lineHeight = 32;
+        return button;
+    }
+
+    private ensureNode(name: string, x: number, y: number, width: number, height: number): Node {
+        let node = this.node.getChildByName(name);
+
+        if (!node) {
+            node = new Node(name);
+            this.node.addChild(node);
+        }
+
+        node.setPosition(x, y, 0);
+        const transform = node.getComponent(UITransform) ?? node.addComponent(UITransform);
+        transform.setContentSize(width, height);
+        return node;
     }
 }

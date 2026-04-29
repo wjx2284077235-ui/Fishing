@@ -1,17 +1,15 @@
-# Cocos Creator 3.x Fishing V0.1 Scene Setup
+# Cocos Creator 3.x 钓鱼 V0.1 场景说明
 
-This workspace contains the TypeScript scripts for a vertical 2D fishing prototype. It does not include a serialized `.scene` file, so create the scene manually in Cocos Creator and bind the Inspector properties as described below.
+本项目是一个竖屏 2D 钓鱼原型，目标版本为 V0.1。当前仓库已经包含 `assets/Main.scene`，脚本也会在运行时为缺失的基础 UI 控件创建默认节点，因此可以直接打开主场景预览。
 
-## Project Settings
+## 项目设置
 
-- Cocos Creator: 3.7 or 3.8+
-- Language: TypeScript
-- Design resolution: `720 x 1280`
-- Orientation: Portrait
+- Cocos Creator：3.8.8
+- 语言：TypeScript
+- 设计分辨率：`720 x 1280`
+- 屏幕方向：竖屏
 
-## Recommended Node Tree
-
-Create one scene with this hierarchy:
+## 推荐节点结构
 
 ```text
 Canvas
@@ -49,160 +47,39 @@ Canvas
     CloseButton
 ```
 
-Set `FishingDialPanel`, `ResultPanel`, and `CollectionPanel` inactive in the editor by default. `GameManager` also hides them during startup, so accidental active panels will be closed when preview begins.
+`FishingDialPanel`、`ResultPanel`、`CollectionPanel` 默认应为 inactive。`GameManager` 启动时也会隐藏它们。
 
-## GameRoot
+## 运行流程
 
-Attach `assets/scripts/managers/GameManager.ts` to `GameRoot`.
+1. `GameManager` 从 `sys.localStorage` 读取金币、鱼竿等级和图鉴记录。
+2. 玩家点击 `抛竿`。
+3. 主按钮禁用，状态显示 `等待鱼儿咬钩...`。
+4. 等待 `1.5` 到 `3` 秒后，根据权重随机选择一条鱼。
+5. `FishingDialUI` 显示判定盘、安全区域和旋转指针。
+6. 点击 `点击判定` 或判定盘区域进行命中判断。
+7. 命中会增加进度；未命中会关闭判定盘并显示 `鱼跑了！`。
+8. 达成所需命中次数后显示结果面板。
+9. 结果面板展示鱼类、稀有度、重量、价值和纪录状态。
+10. `出售` 增加金币并保存；`继续钓鱼` 只关闭结果面板。
+11. `升级鱼竿` 消耗 `rodLevel * 100` 金币，并让之后的安全区每级增加 `2` 度，最高 `120` 度。
+12. `图鉴` 展示 5 种鱼的解锁、捕获次数和最大重量记录。
 
-Bind these Inspector properties:
+## 调试重置
 
-- `Main UI`: drag the `MainUI` component from the `MainUI` node.
-- `Fishing Dial UI`: drag the `FishingDialUI` component from the `FishingDialPanel` node.
-- `Result Panel`: drag the `ResultPanel` component from the `ResultPanel` node.
-- `Collection Panel`: drag the `CollectionPanel` component from the `CollectionPanel` node.
-
-## MainUI
-
-Attach `assets/scripts/ui/MainUI.ts` to the `MainUI` node.
-
-Create these child nodes:
-
-- `GoldLabel`: add a `Label` component.
-- `RodLevelLabel`: add a `Label` component.
-- `StatusLabel`: add a `Label` component.
-- `CastButton`: add a `Button` component and a child label with text `抛竿`.
-- `UpgradeButton`: add a `Button` component and a child label with text `升级鱼竿`.
-- `CollectionButton`: add a `Button` component and a child label with text `图鉴`.
-
-Bind these Inspector properties:
-
-- `Gold Label`: drag `GoldLabel`.
-- `Rod Level Label`: drag `RodLevelLabel`.
-- `Status Label`: drag `StatusLabel`.
-- `Cast Button`: drag the `Button` component on `CastButton`.
-- `Upgrade Button`: drag the `Button` component on `UpgradeButton`.
-- `Collection Button`: drag the `Button` component on `CollectionButton`.
-
-Optional manual Button Click Events:
-
-- `CastButton`: target `GameRoot`, component `GameManager`, handler `onCastButtonClicked`.
-- `UpgradeButton`: target `GameRoot`, component `GameManager`, handler `onUpgradeButtonClicked`.
-- `CollectionButton`: target `GameRoot`, component `GameManager`, handler `onCollectionButtonClicked`.
-
-The scripts also register these button callbacks automatically through the `MainUI` component, so do not bind both automatic and manual click paths at the same time unless you remove one path in code.
-
-Recommended layout:
-
-- `TopBar`: height about `100`, aligned to the top.
-- `FishingArea`: center area, full width, with a simple blue-green `Sprite` or color block as `Background`.
-- `StatusLabel`: centered inside `FishingArea`.
-- `BottomBar`: height about `180`, aligned to the bottom, containing the three buttons.
-
-## FishingDialPanel
-
-Attach `assets/scripts/ui/FishingDialUI.ts` to `FishingDialPanel`.
-
-Create these child nodes:
-
-- `DialGraphics`: add `UITransform` and `Graphics`.
-- `Pointer`: create a thin rectangle `Sprite`, size about `8 x 180`, placed at the dial center.
-- `ProgressLabel`: add a `Label` component.
-- `JudgeButton`: add a `Button` component and a child label with text `点击判定`.
-
-Bind these Inspector properties:
-
-- `Dial Graphics`: drag the `Graphics` component on `DialGraphics`.
-- `Pointer Node`: drag the `Pointer` node.
-- `Progress Label`: drag `ProgressLabel`.
-- `Judge Button`: drag the `Button` component on `JudgeButton`.
-
-Recommended node settings:
-
-- `FishingDialPanel`: centered on screen, size around `720 x 720`.
-- `DialGraphics`: size around `420 x 420`, position `(0, 80)`.
-- `Pointer`: position `(0, 80)`, rotate around the dial center. If your rectangle appears offset, make the pointer node itself centered and put the visual rectangle as a child offset upward by about `90`.
-- `ProgressLabel`: place near the dial, for example `(0, -170)`.
-- `JudgeButton`: place below the dial, for example `(0, -260)`.
-
-The panel also listens for touch end events, so tapping the dial area can trigger judgment in addition to `JudgeButton`.
-
-## ResultPanel
-
-Attach `assets/scripts/ui/ResultPanel.ts` to `ResultPanel`.
-
-Create these child nodes:
-
-- `FishNameLabel`: add `Label`.
-- `RarityLabel`: add `Label`.
-- `WeightLabel`: add `Label`.
-- `SellPriceLabel`: add `Label`.
-- `RecordLabel`: add `Label`.
-- `SellButton`: add `Button` and child label text `出售`.
-- `ContinueButton`: add `Button` and child label text `继续钓鱼`.
-
-Bind these Inspector properties:
-
-- `Fish Name Label`: drag `FishNameLabel`.
-- `Rarity Label`: drag `RarityLabel`.
-- `Weight Label`: drag `WeightLabel`.
-- `Sell Price Label`: drag `SellPriceLabel`.
-- `Record Label`: drag `RecordLabel`.
-- `Sell Button`: drag the `Button` component on `SellButton`.
-- `Continue Button`: drag the `Button` component on `ContinueButton`.
-
-`出售` adds the displayed gold value. `继续钓鱼` closes the result panel without adding gold.
-
-## CollectionPanel
-
-Attach `assets/scripts/ui/CollectionPanel.ts` to `CollectionPanel`.
-
-Create these child nodes:
-
-- `EntryLabel1` to `EntryLabel5`: each has a `Label` component.
-- `CloseButton`: add `Button` and child label text `关闭`.
-
-Bind these Inspector properties:
-
-- `Fish Entry Labels`: set array size to `5`, then drag `EntryLabel1`, `EntryLabel2`, `EntryLabel3`, `EntryLabel4`, and `EntryLabel5` in order.
-- `Close Button`: drag the `Button` component on `CloseButton`.
-
-Recommended layout:
-
-- Use a vertical `Layout` component for the five entry labels.
-- Each entry label can be about `640 x 60`.
-- Use a simple semi-transparent background panel if needed for readability.
-
-## Runtime Flow
-
-1. `GameManager` loads saved data from `sys.localStorage`.
-2. Player taps `抛竿`.
-3. Main buttons become disabled and status changes to `等待鱼咬钩……`.
-4. After `1.5` to `3` seconds, a weighted random fish is selected.
-5. `FishingDialUI` appears and draws the safe sector using `Graphics`.
-6. The pointer rotates at the selected fish's `pointerSpeed`.
-7. Tapping the judge button or dial checks whether the pointer angle is in the safe sector.
-8. Hit increases progress. Miss closes the dial and shows `鱼跑了！`.
-9. Full success opens the result panel and records the catch in the collection.
-10. `出售` adds gold and saves the game.
-11. `升级鱼竿` costs `rodLevel * 100` and increases future safe zone angles by `2` degrees per rod level, capped at `120`.
-
-## Debug Reset
-
-`GameManager` exposes `resetGameForDebug()`. You can temporarily call it from a debug button or from code while testing. It clears local storage and restores:
+`GameManager` 暴露了 `resetGameForDebug()`。临时从按钮或代码调用后会清空本地存档，并恢复：
 
 - `gold = 0`
 - `rodLevel = 1`
-- all fish locked with zero catch count and max weight
+- 全部鱼类未解锁，捕获数为 0，最大重量为 0
 
-## Acceptance Checklist
+## V0.1 验收清单
 
-- The scene opens in portrait resolution.
-- `抛竿` waits 1.5 to 3 seconds and then opens the dial.
-- The dial shows a safe sector and a rotating pointer.
-- Hits inside the sector progress the challenge.
-- Misses close the dial and show `鱼跑了！`.
-- Successful catches show fish data, weight, value, and record state.
-- `出售` adds gold.
-- `升级鱼竿` spends gold and increases future safe zones.
-- `图鉴` shows five fish entries and persists caught fish after preview restart.
+- 主场景以竖屏分辨率打开。
+- `抛竿` 会等待 1.5 到 3 秒，然后打开判定盘。
+- 判定盘显示安全区域和旋转指针。
+- 指针落在安全区域内点击会推进挑战进度。
+- 未命中会关闭判定盘并显示 `鱼跑了！`。
+- 成功捕获会显示鱼类数据、重量、价值和纪录状态。
+- `出售` 会增加金币并保存。
+- `升级鱼竿` 会消耗金币并提升后续安全区角度。
+- `图鉴` 会显示 5 种鱼，并在预览重启后保留捕获记录。
